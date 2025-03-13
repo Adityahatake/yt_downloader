@@ -63,19 +63,35 @@
         }
 
         function trackProgress() {
-            eventSource = new EventSource("/progress");
-            eventSource.onmessage = function(event) {
-                let progressData = JSON.parse(event.data);
-                let progressBar = document.getElementById("progressBar");
-                let progressText = document.getElementById("progressText");
-                
-                for (let file in progressData) {
-                    let percent = parseFloat(progressData[file].replace('%', ''));
-                    progressBar.value = percent;
-                    progressText.textContent = `Downloading: ${percent}%`;
-                }
-            };
+    eventSource = new EventSource("/progress");
+    eventSource.onmessage = function(event) {
+        let progressData = JSON.parse(event.data);
+        let progressBar = document.getElementById("progressBar");
+        let progressText = document.getElementById("progressText");
+        let sizeText = document.getElementById("sizeText");
+        let speedText = document.getElementById("speedText");
+        let etaText = document.getElementById("etaText");
+        let fragmentText = document.getElementById("fragmentText");
+
+        for (let file in progressData) {
+            let data = progressData[file];
+            let percent = parseFloat(data.percent.replace('%', ''));
+
+            progressBar.value = percent;
+            progressText.textContent = `Downloading: ${data.percent}`;
+            sizeText.textContent = `Size: ${data.size}`;
+            speedText.textContent = `Speed: ${data.speed}`;
+            etaText.textContent = `ETA: ${data.eta}`;
+            fragmentText.textContent = `Fragments: ${data.fragments}`;
+
+            // ✅ STOP tracking when download completes
+            if (data.percent === "100%") {
+                eventSource.close();
+                toastr.success("Download complete!");
+            }
         }
+    };
+}
 
         function cancelDownload() {
             if (eventSource) {

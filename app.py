@@ -36,10 +36,21 @@ def get_formats():
         return jsonify({"error": str(e)})
 
 def progress_hook(d):
+    filename = d.get('filename', 'unknown')
     if d['status'] == 'downloading':
-        download_progress[d['filename']] = d['_percent_str']
+        download_progress[filename] = {
+            'percent': d.get('_percent_str', '0%'),
+            'size': d.get('_total_bytes_str', 'Unknown size'),
+            'speed': d.get('_speed_str', 'Unknown speed'),
+            'eta': d.get('_eta_str', 'Unknown ETA'),
+            'fragments': f"(frag {d.get('fragment_index', '?')}/{d.get('fragment_count', '?')})"
+        }
     elif d['status'] == 'finished':
-        download_progress[d['filename']] = '100%'
+        download_progress[filename] = {'percent': '100%', 'size': 'Completed'}
+        # ✅ Automatically remove from tracking after 5 seconds
+        time.sleep(5)
+        del download_progress[filename]
+
 
 @app.route("/download", methods=["POST"])
 def download():
