@@ -13,10 +13,11 @@ progress_data = {}
 def download_video(url, format_id):
     ydl_opts = {
         'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
-        'format': format_id,
+        'format': f'{format_id}+bestaudio/best',
         'progress_hooks': [progress_hook],
         'quiet': True,
         'noplaylist': True,
+        'merge_output_format': 'mp4'
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
