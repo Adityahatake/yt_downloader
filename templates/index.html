@@ -3,37 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Video Downloader</title>
-</head>
-<body>
-
-    <h2>YouTube Video Downloader</h2>
-    <form id="urlForm">
-        <input type="text" id="url" name="url" placeholder="Enter YouTube URL" required>
-        <button type="button" onclick="fetchFormats()">Get Formats</button>
-    </form>
-
-    <select id="formatSelect"></select>
-    <button onclick="downloadVideo()">Download</button>
-
-    <div id="progressContainer" style="display: none;">
-        <h3>Download Progress:</h3>
-        <progress id="progressBar" value="0" max="100"></progress>
-        <p id="progressText">Waiting...</p>
-        <p id="sizeText"></p>
-        <p id="speedText"></p>
-        <p id="etaText"></p>
-        <p id="fragmentText"></p>
-        <button onclick="cancelDownload()">Cancel Download</button>
-    </div>
-
+    <title>YT Video Downloader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script>
         let eventSource;
-
+        
         function fetchFormats() {
             let url = document.getElementById("url").value;
             if (!url) return alert("Enter a YouTube URL first!");
-
+    
             fetch("/get_formats", {
                 method: "POST",
                 body: new FormData(document.getElementById("urlForm"))
@@ -42,32 +20,37 @@
             .then(data => {
                 let select = document.getElementById("formatSelect");
                 select.innerHTML = "";
-
+    
                 if (data.error) {
                     alert(data.error);
                     return;
                 }
-
+    
                 data.forEach(format => {
                     let option = document.createElement("option");
                     option.value = format.format_id;
                     option.textContent = `${format.resolution} (${format.ext})`;
                     select.appendChild(option);
                 });
+    
+                document.getElementById("downloadSection").style.display = "block";
             })
             .catch(error => console.error("Error:", error));
         }
-
+    
         function downloadVideo() {
             let url = document.getElementById("url").value;
             let format = document.getElementById("formatSelect").value;
             if (!url || !format) return alert("Select a format first!");
-
+    
             let formData = new FormData();
             formData.append("url", url);
             formData.append("format", format);
-
-            fetch("/download", { method: "POST", body: formData })
+    
+            fetch("/download", {
+                method: "POST",
+                body: formData
+            })
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
@@ -79,7 +62,7 @@
             })
             .catch(error => console.error("Error:", error));
         }
-
+    
         function trackProgress() {
             eventSource = new EventSource("/progress");
             eventSource.onmessage = function(event) {
@@ -90,18 +73,18 @@
                 let speedText = document.getElementById("speedText");
                 let etaText = document.getElementById("etaText");
                 let fragmentText = document.getElementById("fragmentText");
-
+    
                 for (let file in progressData) {
                     let data = progressData[file];
                     let percent = parseFloat(data.percent.replace('%', ''));
-
+    
                     progressBar.value = percent;
                     progressText.innerHTML = `<strong>Downloading:</strong> ${data.percent}`;
                     sizeText.innerHTML = `<strong>Size:</strong> ${data.size}`;
                     speedText.innerHTML = `<strong>Speed:</strong> ${data.speed}`;
                     etaText.innerHTML = `<strong>ETA:</strong> ${data.eta}`;
                     fragmentText.innerHTML = `<strong>Fragments:</strong> ${data.fragments}`;
-
+    
                     if (data.percent === "100%") {
                         eventSource.close();
                         alert("Download complete!");
@@ -109,7 +92,7 @@
                 }
             };
         }
-
+    
         function cancelDownload() {
             if (eventSource) {
                 eventSource.close();
@@ -118,6 +101,40 @@
             }
         }
     </script>
+    
+    <!-- Progress Section -->
+    <div id="progressContainer" style="display: none; margin-top: 20px;">
+        <h3>Download Progress:</h3>
+        <progress id="progressBar" value="0" max="100" style="width: 100%;"></progress>
+        <p id="progressText">Waiting...</p>
+        <p id="sizeText"></p>
+        <p id="speedText"></p>
+        <p id="etaText"></p>
+        <p id="fragmentText"></p>
+        <button onclick="cancelDownload()" style="margin-top: 10px;">Cancel Download</button>
+    </div>
+    
+</head>
+<body>
+    <div class="container">
+        <h2>YouTube Video Downloader</h2>
+        <form id="urlForm">
+            <input type="text" id="url" name="url" placeholder="Enter YouTube URL" required>
+            <button type="button" onclick="fetchFormats()">Get Formats</button>
+        </form>
 
+        <div id="downloadSection" style="display: none;">
+            <label for="formatSelect">Select Resolution:</label>
+            <select id="formatSelect" required></select>
+            <button onclick="downloadVideo()">Download</button>
+        </div>
+
+        <div id="progressContainer" style="display: none; margin-top: 20px;">
+            <h3>Download Progress:</h3>
+            <progress id="progressBar" value="0" max="100" style="width: 100%;"></progress>
+            <p id="progressText">Waiting...</p>
+            <button onclick="cancelDownload()" style="margin-top: 10px;">Cancel Download</button>
+        </div>
+    </div>
 </body>
 </html>
