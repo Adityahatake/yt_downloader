@@ -3,55 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YT Video Downloader</title>
+    <title>YouTube Video Downloader</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script>
-        let eventSource;
-        
+        let eventSource = null;
+
         function fetchFormats() {
-            let url = document.getElementById("url").value;
-            if (!url) return alert("Enter a YouTube URL first!");
-    
+            const url = document.getElementById("url").value.trim();
+            if (!url) return alert("Please enter a YouTube URL.");
+
             fetch("/get_formats", {
                 method: "POST",
                 body: new FormData(document.getElementById("urlForm"))
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
-                let select = document.getElementById("formatSelect");
+                const select = document.getElementById("formatSelect");
                 select.innerHTML = "";
-    
                 if (data.error) {
                     alert(data.error);
                     return;
                 }
-    
                 data.forEach(format => {
-                    let option = document.createElement("option");
+                    const option = document.createElement("option");
                     option.value = format.format_id;
                     option.textContent = `${format.resolution} (${format.ext})`;
                     select.appendChild(option);
                 });
-    
                 document.getElementById("downloadSection").style.display = "block";
             })
-            .catch(error => console.error("Error:", error));
+            .catch(() => alert("Failed to fetch formats."));
         }
-    
+
         function downloadVideo() {
-            let url = document.getElementById("url").value;
-            let format = document.getElementById("formatSelect").value;
-            if (!url || !format) return alert("Select a format first!");
-    
-            let formData = new FormData();
+            const url = document.getElementById("url").value.trim();
+            const format = document.getElementById("formatSelect").value;
+            if (!url || !format) return alert("Please select a format.");
+
+            const formData = new FormData();
             formData.append("url", url);
             formData.append("format", format);
-    
+
             fetch("/download", {
                 method: "POST",
                 body: formData
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 if (data.error) {
                     alert(data.error);
@@ -60,81 +57,63 @@
                     trackProgress();
                 }
             })
-            .catch(error => console.error("Error:", error));
+            .catch(() => alert("Failed to start download."));
         }
-    
+
         function trackProgress() {
+            if (eventSource) eventSource.close();
             eventSource = new EventSource("/progress");
             eventSource.onmessage = function(event) {
-                let progressData = JSON.parse(event.data);
-                let progressBar = document.getElementById("progressBar");
-                let progressText = document.getElementById("progressText");
-                let sizeText = document.getElementById("sizeText");
-                let speedText = document.getElementById("speedText");
-                let etaText = document.getElementById("etaText");
-                let fragmentText = document.getElementById("fragmentText");
-    
+                const progressData = JSON.parse(event.data);
                 for (let file in progressData) {
-                    let data = progressData[file];
-                    let percent = parseFloat(data.percent.replace('%', ''));
-    
-                    progressBar.value = percent;
-                    progressText.innerHTML = `<strong>Downloading:</strong> ${data.percent}`;
-                    sizeText.innerHTML = `<strong>Size:</strong> ${data.size}`;
-                    speedText.innerHTML = `<strong>Speed:</strong> ${data.speed}`;
-                    etaText.innerHTML = `<strong>ETA:</strong> ${data.eta}`;
-                    fragmentText.innerHTML = `<strong>Fragments:</strong> ${data.fragments}`;
-    
+                    const data = progressData[file];
+                    const percent = parseFloat(data.percent.replace('%', '')) || 0;
+                    document.getElementById("progressBar").value = percent;
+                    document.getElementById("progressText").textContent = `Progress: ${data.percent}`;
+                    document.getElementById("sizeText").textContent = `Size: ${data.size}`;
+                    document.getElementById("speedText").textContent = `Speed: ${data.speed}`;
+                    document.getElementById("etaText").textContent = `ETA: ${data.eta}`;
+                    document.getElementById("fragmentText").textContent = `Fragments: ${data.fragments}`;
                     if (data.percent === "100%") {
                         eventSource.close();
-                        alert("Download complete!");
+                        eventSource = null;
+                        document.getElementById("progressText").textContent = "Download complete!";
                     }
                 }
             };
         }
-    
+
         function cancelDownload() {
             if (eventSource) {
                 eventSource.close();
+                eventSource = null;
                 document.getElementById("progressContainer").style.display = "none";
-                alert("Download canceled!");
+                alert("Download canceled.");
             }
         }
     </script>
-    
-    <!-- Progress Section -->
-    <div id="progressContainer" style="display: none; margin-top: 20px;">
-        <h3>Download Progress:</h3>
-        <progress id="progressBar" value="0" max="100" style="width: 100%;"></progress>
-        <p id="progressText">Waiting...</p>
-        <p id="sizeText"></p>
-        <p id="speedText"></p>
-        <p id="etaText"></p>
-        <p id="fragmentText"></p>
-        <button onclick="cancelDownload()" style="margin-top: 10px;">Cancel Download</button>
-    </div>
-    
 </head>
 <body>
     <div class="container">
         <h2>YouTube Video Downloader</h2>
-        <form id="urlForm">
-            <input type="text" id="url" name="url" placeholder="Enter YouTube URL" required>
+        <form id="urlForm" onsubmit="return false;">
+            <label for="url">YouTube URL</label>
+            <input type="text" id="url" name="url" placeholder="Paste YouTube video URL here" autocomplete="off" required>
             <button type="button" onclick="fetchFormats()">Get Formats</button>
         </form>
 
         <div id="downloadSection" style="display: none;">
-            <label for="formatSelect">Select Resolution:</label>
+            <label for="formatSelect">Select Format</label>
             <select id="formatSelect" required></select>
-            <button onclick="downloadVideo()">Download</button>
+            <button type="button" onclick="downloadVideo()">Download</button>
         </div>
 
-        <div id="progressContainer" style="display: none; margin-top: 20px;">
-            <h3>Download Progress:</h3>
-            <progress id="progressBar" value="0" max="100" style="width: 100%;"></progress>
-            <p id="progressText">Waiting...</p>
-            <button onclick="cancelDownload()" style="margin-top: 10px;">Cancel Download</button>
-        </div>
-    </div>
-</body>
-</html>
+        <div id="progressContainer" style="display: none; margin-top: 24px;">
+            <h3 style="color:#ff4757; margin-bottom:10px;">Download Progress</h3>
+            <progress id="progressBar" value="0" max="100"></progress>
+            <div class="progress-info" id="progressText">Waiting...</div>
+            <div class="progress-info" id="sizeText"></div>
+            <div class="progress-info" id="speedText"></div>
+            <div class="progress-info" id="etaText"></div>
+            <div class="progress-info" id="fragmentText"></div>
+            <button type="button" onclick="cancelDownload()" style="margin-top: 10px;
